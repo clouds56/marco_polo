@@ -19,7 +19,12 @@ unless :integration in ExUnit.configuration[:exclude] do
     run MarcoPolo tests.
     """
 
-  case :gen_tcp.connect('localhost', 2424, []) do
+  host = System.get_env("ORIENTDB_HOST") || "localhost"
+  {port, ""} = Integer.parse(System.get_env("ORIENTDB_PORT") || "2424")
+
+  script_path = System.get_env("ORIENTDB_SCRIPT") || "orientdb-console"
+
+  case :gen_tcp.connect(to_charlist(host), port, []) do
     {:ok, _} ->
       :ok
     {:error, reason} ->
@@ -30,10 +35,13 @@ unless :integration in ExUnit.configuration[:exclude] do
   records  = []
 
   run_script = fn(script) ->
-    case System.cmd("orientdb-console", [script], stderr_to_stdout: true) do
+    case System.cmd(script_path, [script], stderr_to_stdout: true) do
       {lines, 0}   -> lines
-      {err, _status} -> Mix.raise """
-      Database setup in test/test_helper.exs failed:
+      {err, status} ->
+      Mix.raise """
+      Database setup in test/test_helper.exs failed with exit code #{status}:
+      #{script}
+      result:
       #{err}
       """
     end
@@ -58,7 +66,7 @@ unless :integration in ExUnit.configuration[:exclude] do
 
   insert_record = fn(name, insert_cmd) ->
     output = run_script.("""
-    CONNECT remote:localhost/MarcoPoloTest #{user} #{pass};
+    CONNECT remote:#{host}/MarcoPoloTest #{user} #{pass};
     #{insert_cmd}
     """)
 
@@ -67,19 +75,19 @@ unless :integration in ExUnit.configuration[:exclude] do
 
   run_script.("""
   SET ignoreErrors true;
-  DROP DATABASE remote:localhost/MarcoPoloTest #{user} #{pass};
-  DROP DATABASE remote:localhost/MarcoPoloTestGenerated #{user} #{pass};
-  DROP DATABASE remote:localhost/MarcoPoloToDrop #{user} #{pass};
-  DROP DATABASE remote:localhost/MarcoPoloImportDest #{user} #{pass};
+  DROP DATABASE remote:#{host}/MarcoPoloTest #{user} #{pass};
+  DROP DATABASE remote:#{host}/MarcoPoloTestGenerated #{user} #{pass};
+  DROP DATABASE remote:#{host}/MarcoPoloToDrop #{user} #{pass};
+  DROP DATABASE remote:#{host}/MarcoPoloImportDest #{user} #{pass};
   SET ignoreErrors false;
 
-  CREATE DATABASE remote:localhost/MarcoPoloTest #{user} #{pass} plocal;
-  CREATE DATABASE remote:localhost/MarcoPoloToDrop #{user} #{pass} memory;
-  CREATE DATABASE remote:localhost/MarcoPoloImportDest #{user} #{pass} plocal;
+  CREATE DATABASE remote:#{host}/MarcoPoloTest #{user} #{pass} plocal;
+  CREATE DATABASE remote:#{host}/MarcoPoloToDrop #{user} #{pass} memory;
+  CREATE DATABASE remote:#{host}/MarcoPoloImportDest #{user} #{pass} plocal;
   """)
 
   output = run_script.("""
-  CONNECT remote:localhost/MarcoPoloTest #{user} #{pass};
+  CONNECT remote:#{host}/MarcoPoloTest #{user} #{pass};
   CREATE CLUSTER schemaless ID 999;
   CREATE CLASS Schemaless CLUSTER 999;
   """)
@@ -87,7 +95,7 @@ unless :integration in ExUnit.configuration[:exclude] do
   clusters = [{"schemaless", extract_cluster_id.(output)}|clusters]
 
   output = run_script.("""
-  CONNECT remote:localhost/MarcoPoloTest #{user} #{pass};
+  CONNECT remote:#{host}/MarcoPoloTest #{user} #{pass};
   CREATE CLUSTER schemaful ID 1001;
   CREATE CLASS Schemaful;
   CREATE PROPERTY Schemaful.myString STRING;
@@ -96,7 +104,7 @@ unless :integration in ExUnit.configuration[:exclude] do
   clusters = [{"schemaful", extract_cluster_id.(output)}|clusters]
 
   output = run_script.("""
-  CONNECT remote:localhost/MarcoPoloTest #{user} #{pass};
+  CONNECT remote:#{host}/MarcoPoloTest #{user} #{pass};
   CREATE CLUSTER schemaless_with_binary_records ID 1002;
   CREATE CLASS SchemalessWithBinaryRecords CLUSTER 1002;
   """)
