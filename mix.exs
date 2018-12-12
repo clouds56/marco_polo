@@ -30,7 +30,7 @@ defmodule MarcoPolo.Mixfile do
   end
 
   def application do
-    [applications: [:logger, :connection, :ssl, :hackney, :poison],
+    [applications: [:logger, :connection, :ssl, :hackney],
      env: [client_name: @client_name,
            version: @version,
            binary_protocol_version: @binary_protocol_version]]
@@ -49,10 +49,11 @@ defmodule MarcoPolo.Mixfile do
   end
 
   defp deps do
-    [{:decimal, "~> 1.1.0"},
-     {:connection, "~> 1.0.0"},
-     {:hackney, "~> 1.6.0"},
-     {:poison, "~> 2.0.0"},
+    [{:decimal, "~> 1.1"},
+     {:connection, "~> 1.0"},
+     {:hackney, "~> 1.6"},
+     {:poison, "~> 2.2 or ~> 3.0", optional: true},
+     {:jason, "~> 1.0", optional: true},
      {:dialyze, "~> 0.2.0", only: :dev},
      {:earmark, ">= 0.0.0", only: :docs},
      {:ex_doc, ">= 0.0.0", only: :docs}]
